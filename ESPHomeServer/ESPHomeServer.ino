@@ -12,6 +12,8 @@
  *    - https://techtutorialsx.com/2020/04/17/esp32-mdns-address-resolution/
  *    - https://github.com/horihiro/esp8266-google-home-notifier
  *    - https://www.megunolink.com/articles/wireless/talk-esp32-over-wifi/
+ *    - https://randomnerdtutorials.com/esp32-bluetooth-classic-arduino-ide/
+ *    - https://techtutorialsx.com/2018/03/09/esp32-arduino-getting-the-bluetooth-device-address/
  * 
  */
  

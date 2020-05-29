@@ -12,8 +12,9 @@
  * 
  * References: 
  *    - https://create.arduino.cc/projecthub/mayooghgirish/arduino-bluetooth-basic-tutorial-d8b737
- *    - https://create.arduino.cc/projecthub/mayooghgirish/arduino-bluetooth-basic-tutorial-d8b737
  *    - https://randomnerdtutorials.com/esp32-bluetooth-classic-arduino-ide/
+ *    - https://learn.sparkfun.com/tutorials/using-the-bluesmirf/introduction
+ *    - https://cdn.sparkfun.com/assets/1/e/e/5/d/5217b297757b7fd3748b4567.pdf
  * 
  */
  
@@ -25,7 +26,7 @@ const int RX = 12;  // RX-I pin of Serial device
 const int LEDPin = 10;
 const int buttonPin = 11;
 const int batteryPin = A1;
-const int loopDelay = 100;
+const int loopDelay = 1000;
 const int messageDelay = 5 * 1000;
 const int notifyAfter = 60; // in seconds
 
@@ -39,6 +40,7 @@ int buttonNew;
 int buttonOld;
 int count;
 bool notifyBattery;
+bool connected;
 
 void setup()
 {
@@ -63,22 +65,44 @@ void setup()
     notifyBattery = false;
   }
   
-  Serial.println("Ready...");
+  connected = true;
+
+  SDevice.print("$$$");
+  Serial.println("Starting...");
 }
 
 void loop()
 {
-  if (SDevice.available())
-  {
-    byte response = (byte)SDevice.read();
-    if (response == lowBatteryCMD)
-      notifyBattery = false;
+  if (SDevice.available()) {
+    Serial.print("Received: ");
+    int n = SDevice.available();
+    if (n == 1) {
+      byte response = (byte)SDevice.read();
+      if (response == lowBatteryCMD)
+        notifyBattery = false;
+      Serial.println(int(response));
+    } else if (n > 1) {
+      String str = "";
+      while (SDevice.available() > 0) {
+        char c = (char)SDevice.read();
+        if (int(c) >= 32)
+          str += c;
+      }
+      Serial.println(str);
+      if (str == "CMD") {
+        Serial.println("Connect...");
+        SDevice.println("C,4C11AEEB9D86");
+        connected = true;
+        delay(2000);
+      }
+    }
   }
 
-  if (notifyBattery) {
+  if (notifyBattery && connected) {
     Serial.println("Notify: low battery");
     SDevice.write(lowBatteryCMD);
-  }
+    delay(messageDelay);
+  } 
 
   buttonNew=digitalRead(buttonPin);
   if (buttonOld == 0 && buttonNew == 1) {
@@ -106,7 +130,7 @@ void loop()
     count = 0;
   }
   
-  if (count >= maxCount) {
+  if (count >= maxCount && connected) {
     Serial.println("Notify: close door");
     digitalWrite(LEDPin, LOW);
     delay(250);
