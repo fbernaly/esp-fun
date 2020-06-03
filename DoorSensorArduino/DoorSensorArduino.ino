@@ -39,11 +39,10 @@ int LEDState;
 int buttonNew;
 int buttonOld;
 int count;
-bool notifyBattery;
+bool allowToNotifyBattery;
 bool connected;
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   SDevice.begin(115200);
 
@@ -54,32 +53,28 @@ void setup()
   LEDState = 1;
   buttonOld = digitalRead(buttonPin);
   count = 0;
-
-  int battery = analogRead(batteryPin);
-  Serial.print("Battery level: ");
-  Serial.println(battery);
-  double minLevel = 1024 * 2.8 / 3.3;
-  if (battery < int(minLevel)) {
-    notifyBattery = true;
-  } else {
-    notifyBattery = false;
-  }
-  
+  allowToNotifyBattery = true;
   connected = true;
 
   SDevice.print("$$$");
   Serial.println("Starting...");
 }
 
-void loop()
-{
+void loop() {
+  readSerial();
+  checkBattery();
+  checkTimer();
+  delay(loopDelay);
+}
+
+void readSerial() {
   if (SDevice.available()) {
     Serial.print("Received: ");
     int n = SDevice.available();
     if (n == 1) {
       byte response = (byte)SDevice.read();
       if (response == lowBatteryCMD)
-        notifyBattery = false;
+        allowToNotifyBattery = false;
       Serial.println(int(response));
     } else if (n > 1) {
       String str = "";
@@ -97,14 +92,22 @@ void loop()
       }
     }
   }
+}
 
-  if (notifyBattery && connected) {
+void checkBattery() {
+  int battery = analogRead(batteryPin);
+  Serial.print("Battery level: ");
+  Serial.println(battery);
+  double minLevel = 1024 * 2.8 / 3.3;
+  if ((battery < int(minLevel)) && connected && allowToNotifyBattery) {
     Serial.println("Notify: low battery");
     SDevice.write(lowBatteryCMD);
     delay(messageDelay);
-  } 
+  }
+}
 
-  buttonNew=digitalRead(buttonPin);
+void checkTimer() {
+  buttonNew = digitalRead(buttonPin);
   if (buttonOld == 0 && buttonNew == 1) {
     if (LEDState == 0) {
       digitalWrite(LEDPin, HIGH);
@@ -139,6 +142,4 @@ void loop()
     count = 0;
     delay(messageDelay);
   }
-
-  delay(loopDelay);
 }
