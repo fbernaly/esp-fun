@@ -1,0 +1,21 @@
+<p>Send a message to your Google Home device.</p>
+<form action=/notify>
+	<label for=language>Language:</label>
+	<select id=language name=language>
+		<option value=en>English</option>
+		<option value=es>Spanish</option>
+	</select>
+	<br>
+
+	<label for=device>Device:</label>
+	<select id=device name=device>
+		<option value="Kitchen Display">Kitchen Display</option>
+		<option value="Hallway speaker">Hallway speaker</option>
+		<option value="Bathroom speaker">Bathroom speaker</option>
+	</select>
+	<br>
+
+	<label for=message>Message:</label>
+	<input type=text id=message name=message>
+	<input type=submit value=Send>
+</form>
