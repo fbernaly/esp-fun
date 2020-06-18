@@ -36,8 +36,17 @@ const char* ssid = "ssid";
 const char* password = "password";
 const char* hostname = "hostname";
 
-AsyncWebServer server(80);
+const byte lowBatteryCMD_B = 0xB0;
+const byte closeDoorCMD_B = 0xB1;
+const char speaker_B[]  = "192.168.0.25";
+const char lowBatteryMessage_B[] = "The upstairs bathroom door sensor is running out of battery. Let's charge it.";
+const char closeDoorMessage_B[] = "Could someone close the upstairs bathroom door, please?";
+
+AsyncWebServer WebServer(80);
 GoogleHomeNotifier ghn;
+WiFiServer TCPServer(6000);
+WiFiClient RemoteClient;
+bool notifyBattery;
 
 typedef struct Message {
   String message;
@@ -45,7 +54,7 @@ typedef struct Message {
   String language;
 };
 
-#define maxSize 5
+#define maxSize 20
 int i = 0; // counts messages enqued
 int j = -1; // counts messages sent
 Message messages[maxSize];
@@ -89,13 +98,19 @@ void setup(){
   Serial.println(WiFi.getHostname());
 
   // Start server
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+  WebServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", "text/html");
   });
 
-  server.on("/notify", HTTP_GET, handleNotifyRequest);
+  WebServer.on("/notify", HTTP_GET, handleNotifyRequest);
 
-  server.begin();
+  WebServer.on("/time", HTTP_GET, [](AsyncWebServerRequest *request){
+    Serial.println("Time requested.");
+    request->send(SPIFFS, "/time.html", "text/html");
+  });
+
+  WebServer.begin();
+  TCPServer.begin();
 
   Serial.println();
   Serial.println("Server is ready :)");
@@ -103,11 +118,13 @@ void setup(){
 }
 
 void loop(){
+  checkForTCPConnections();
   dequeueMessage();
   delay(100);
   c++;
   if (c > 60 * 10) {
     c = 0;
+    Serial.println("Reset server");
     ESP.restart();
   }
 }
@@ -141,11 +158,7 @@ void handleNotifyRequest(AsyncWebServerRequest *request) {
   String device = pDevice->value();
   String language = pLanguage->value();
 
-  bool notify = enqueueMessage(message, device, language);
-
-  if (notify == true && j < 0) {
-    j = 0;      
-  }
+  enqueueMessage(message, device, language);
   
   request->send(200, "text/plain", "Message added to the queue, it will play soon :)");
 }
@@ -179,6 +192,10 @@ bool enqueueMessage(String message, String device, String language) {
   
   i++;
 
+  if (j < 0) {
+    j = 0;      
+  }
+
   return true;
 }
 
@@ -198,16 +215,16 @@ void dequeueMessage() {
   j++;
 
   if (j == i) {
-    Serial.println("Reset counters");
+    Serial.println("Reset message counters");
     i = 0;
     j = -1;
     c = 0;
   }
 }
 
-void sendGoogleMessage(const char message[], const char displayName[], const char language[]) {
+void sendGoogleMessage(const char message[], const char device[], const char language[]) {
   Serial.println("Connecting to Google Home...");
-  if (ghn.device(displayName, language) != true) {
+  if (ghn.ip(getIP(device), language) != true) {
     Serial.print("Error: ");
     Serial.println(ghn.getLastError());
     return;
@@ -221,12 +238,42 @@ void sendGoogleMessage(const char message[], const char displayName[], const cha
   Serial.print("Sending '");
   Serial.print(message);
   Serial.print("' to ");
-  Serial.println(displayName);
+  Serial.println(device);
   
   if (ghn.notify(message) != true) {
     Serial.print("Error: ");
     Serial.println(ghn.getLastError());
   } else {
     Serial.println("Message sent!!!");
+  }
+}
+
+IPAddress getIP(const char * str) {
+  uint8_t ip[4];
+  sscanf(str, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]);
+  return IPAddress(ip[0], ip[1], ip[2], ip[3]);
+}
+
+void checkForTCPConnections() {
+  if (TCPServer.hasClient()) {
+    RemoteClient = TCPServer.available();
+    Serial.println("New connection...");
+    notifyBattery = true;
+  }
+
+  if (RemoteClient.available()) {
+    byte c = (byte)RemoteClient.read();
+    Serial.print("Received: ");
+    Serial.println(int(c));
+
+    if (c == lowBatteryCMD_B && notifyBattery == true) {
+      bool enqueued = enqueueMessage(lowBatteryMessage_B, speaker_B, "en");
+      if (enqueued == true) {
+        notifyBattery = false;
+        RemoteClient.write(c);
+      }
+    } else if (c == closeDoorCMD_B) {
+      enqueueMessage(closeDoorMessage_B, speaker_B, "en");
+    }
   }
 }
