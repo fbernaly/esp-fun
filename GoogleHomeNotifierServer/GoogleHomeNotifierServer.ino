@@ -5,13 +5,15 @@
  * message to a Google device in your home.
  * 
  * References: 
- *    - https://techtutorialsx.com/2020/04/17/esp32-mdns-address-resolution/
+ *    - https://techtutorialsx.com/2016/10/22/esp8266-webserver-getting-query-parameters/
  *    - https://techtutorialsx.com/2017/04/24/esp32-connecting-to-a-wifi-network/
  *    - https://techtutorialsx.com/2017/12/01/esp32-arduino-asynchronous-http-webserver/
+ *    - https://techtutorialsx.com/2017/12/03/esp32-arduino-software-reset/
  *    - https://techtutorialsx.com/2017/12/09/esp32-arduino-asynchronous-http-webserver-simple-html/
  *    - https://techtutorialsx.com/2017/12/16/esp32-arduino-async-http-server-serving-a-html-page-from-flash-memory/
  *    - https://techtutorialsx.com/2017/12/17/esp32-arduino-http-server-getting-query-parameters/
  *    - https://techtutorialsx.com/2018/08/05/esp32-arduino-spiffs-writing-a-file/
+ *    - https://techtutorialsx.com/2020/04/17/esp32-mdns-address-resolution/
  *    
  *    - https://www.dfrobot.com/blog-827.html
  *    - https://www.dfrobot.com/blog-1114.html
@@ -29,8 +31,8 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <esp8266-google-home-notifier.h>
-#include "ESPAsyncWebServer.h"
-#include "SPIFFS.h"
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
 
 const char* ssid = "ssid";
 const char* password = "password";
@@ -42,23 +44,23 @@ const char speaker_B[]  = "192.168.0.25";
 const char lowBatteryMessage_B[] = "The upstairs bathroom door sensor is running out of battery. Let's charge it.";
 const char closeDoorMessage_B[] = "Could someone close the upstairs bathroom door, please?";
 
-AsyncWebServer WebServer(80);
-GoogleHomeNotifier ghn;
-WiFiServer TCPServer(6000);
-WiFiClient RemoteClient;
-bool notifyBattery;
-
 typedef struct Message {
   String message;
   String device;
   String language;
 };
 
+AsyncWebServer HttpServer(80);
+GoogleHomeNotifier ghn;
+WiFiServer TCPServer(6000);
+WiFiClient RemoteClient;
+
+bool notifyBattery;
 #define maxSize 20
 int i = 0; // counts messages enqued
 int j = -1; // counts messages sent
 Message messages[maxSize];
-int c = 0;
+unsigned long start;
 
 void setup(){
   Serial.begin(115200);
@@ -97,39 +99,45 @@ void setup(){
   Serial.print("Hostname: ");
   Serial.println(WiFi.getHostname());
 
-  // Start server
-  WebServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", "text/html");
-  });
+  // Start Http server
+  HttpServer.on("/", HTTP_GET, handleRoot);
+  HttpServer.on("/time", HTTP_GET, handleTime);
+  HttpServer.on("/notify", HTTP_GET, handleNotify);
+  HttpServer.onNotFound(handleNotFound);
+  HttpServer.begin();
 
-  WebServer.on("/notify", HTTP_GET, handleNotifyRequest);
-
-  WebServer.on("/time", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("Time requested.");
-    request->send(SPIFFS, "/time.html", "text/html");
-  });
-
-  WebServer.begin();
+  // Start TCP server
   TCPServer.begin();
+
+  // Start counter
+  start = millis();
 
   Serial.println();
   Serial.println("Server is ready :)");
   Serial.println();
 }
 
-void loop(){
+void loop() {
+  checkInternetConnection();
   checkForTCPConnections();
   dequeueMessage();
+  checkTimer();
   delay(100);
-  c++;
-  if (c > 60 * 10) {
-    c = 0;
-    Serial.println("Reset server");
-    ESP.restart();
-  }
 }
 
-void handleNotifyRequest(AsyncWebServerRequest *request) {
+void handleRoot(AsyncWebServerRequest *request) {
+  Serial.println("New http client");
+  request->send(SPIFFS, "/index.html", "text/html");
+}
+
+void handleTime(AsyncWebServerRequest *request) {
+  Serial.println("Time requested.");
+  request->send(SPIFFS, "/time.html", "text/html");  
+}
+
+void handleNotify(AsyncWebServerRequest *request) {
+  Serial.println("Notify");
+
   if (!request->hasParam("language")) {
     request->send(200, "text/plain", "Request is missing language parameter :(");
     return;
@@ -163,6 +171,10 @@ void handleNotifyRequest(AsyncWebServerRequest *request) {
   request->send(200, "text/plain", "Message added to the queue, it will play soon :)");
 }
 
+void handleNotFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
 bool enqueueMessage(String message, String device, String language) {
   if (i > (maxSize - 1)) {
     Serial.print("Cannot enqueue message, buffer size (");
@@ -193,7 +205,7 @@ bool enqueueMessage(String message, String device, String language) {
   i++;
 
   if (j < 0) {
-    j = 0;      
+    j = 0;   
   }
 
   return true;
@@ -218,7 +230,6 @@ void dequeueMessage() {
     Serial.println("Reset message counters");
     i = 0;
     j = -1;
-    c = 0;
   }
 }
 
@@ -275,5 +286,28 @@ void checkForTCPConnections() {
     } else if (c == closeDoorCMD_B) {
       enqueueMessage(closeDoorMessage_B, speaker_B, "en");
     }
+  }
+}
+
+void checkInternetConnection() {
+  if (WiFi.status() == WL_CONNECTED)
+    return;
+  // reset ESP32
+  ESP.restart();
+}
+
+void checkTimer()
+{
+  unsigned long duration = millis() - start;
+  unsigned long period = 1000 * 60 * 5; // 5 minutes
+  if (duration > period &&
+      i == 0 &&
+      j == -1) {
+    // re-start HTTP server
+    HttpServer.end();
+    delay(250);
+    HttpServer.begin();
+    Serial.println("Reset server");
+    start = millis();
   }
 }
