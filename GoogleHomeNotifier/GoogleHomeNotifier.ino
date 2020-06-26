@@ -21,17 +21,17 @@
 
 const char* ssid = "ssid";
 const char* password = "password";
-const char* hostname = "hostname";
 
-const char displayName[] = "Hallway speaker";
+const char deviceName[] = "Hallway speaker";
 const char message[] = "Could someone close the bathroom door, please?";
 
 GoogleHomeNotifier ghn;
 
 void setup() {
   Serial.begin(115200);
+  
   Serial.println("");
-  Serial.print("connecting to ");
+  Serial.print("Connecting to ");
   Serial.print(ssid);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -40,29 +40,36 @@ void setup() {
     delay(250);
     Serial.print(".");
   }
+  
   Serial.println("");
-  Serial.println("connected.");
+  Serial.print("Connected.");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  Serial.println("connecting to Google Home...");
+  sendGoogleMessage(deviceName, message);
+  Serial.println("Done.");
+}
+
+void loop() {
+}
+
+void sendGoogleMessage(const char displayName[], const char message[]) {
+ Serial.println("Connecting to Google Home...");
   if (ghn.device(displayName, "en") != true) {
     Serial.println("error...");
     Serial.println(ghn.getLastError());
     return;
   }
-  Serial.print("found Google Home(");
+  Serial.print("Found Google Home(");
   Serial.print(ghn.getIPAddress());
   Serial.print(":");
   Serial.print(ghn.getPort());
   Serial.println(")");
   
   if (ghn.notify(message) != true) {
+    Serial.println("error...");
     Serial.println(ghn.getLastError());
-    return;
+  } else {
+    Serial.println("Message sent!!!");
   }
-  Serial.println("Done.");
-}
-
-void loop() {
 }
