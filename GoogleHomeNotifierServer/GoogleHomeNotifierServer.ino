@@ -38,12 +38,6 @@ const char* ssid = "ssid";
 const char* password = "password";
 const char* hostname = "hostname";
 
-const byte lowBatteryCMD_B = 0xB0;
-const byte closeDoorCMD_B = 0xB1;
-const char speaker_B[]  = "192.168.0.25";
-const char lowBatteryMessage_B[] = "The upstairs bathroom door sensor is running out of battery. Let's charge it.";
-const char closeDoorMessage_B[] = "Could someone close the upstairs bathroom door, please?";
-
 typedef struct Message {
   String message;
   String device;
@@ -52,10 +46,7 @@ typedef struct Message {
 
 AsyncWebServer HttpServer(80);
 GoogleHomeNotifier ghn;
-WiFiServer TCPServer(6000);
-WiFiClient RemoteClient;
 
-bool notifyBattery;
 #define maxSize 20
 int i = 0; // counts messages enqued
 int j = -1; // counts messages sent
@@ -106,9 +97,6 @@ void setup(){
   HttpServer.onNotFound(handleNotFound);
   HttpServer.begin();
 
-  // Start TCP server
-  TCPServer.begin();
-
   // Start counter
   start = millis();
 
@@ -119,7 +107,6 @@ void setup(){
 
 void loop() {
   checkInternetConnection();
-  checkForTCPConnections();
   dequeueMessage();
   checkTimer();
   delay(100);
@@ -263,30 +250,6 @@ IPAddress getIP(const char * str) {
   uint8_t ip[4];
   sscanf(str, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]);
   return IPAddress(ip[0], ip[1], ip[2], ip[3]);
-}
-
-void checkForTCPConnections() {
-  if (TCPServer.hasClient()) {
-    RemoteClient = TCPServer.available();
-    Serial.println("New connection...");
-    notifyBattery = true;
-  }
-
-  if (RemoteClient.available()) {
-    byte c = (byte)RemoteClient.read();
-    Serial.print("Received: ");
-    Serial.println(int(c));
-
-    if (c == lowBatteryCMD_B && notifyBattery == true) {
-      bool enqueued = enqueueMessage(lowBatteryMessage_B, speaker_B, "en");
-      if (enqueued == true) {
-        notifyBattery = false;
-        RemoteClient.write(c);
-      }
-    } else if (c == closeDoorCMD_B) {
-      enqueueMessage(closeDoorMessage_B, speaker_B, "en");
-    }
-  }
 }
 
 void checkInternetConnection() {
