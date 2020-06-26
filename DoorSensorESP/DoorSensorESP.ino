@@ -55,13 +55,11 @@ void setup() {
   configureGPIO();
   
   Serial.begin(115200);
-  
-  connectToWiFi();
 }
  
 void loop() { 
   buttonNew=digitalRead(buttonPin);
-  if (buttonOld == 0 && buttonNew == 1) {
+  if (buttonOld == 1 && buttonNew == 0) {
     if (LEDState == 0) {
       digitalWrite(LEDPin, ON);
       LEDState = 1;
@@ -82,10 +80,11 @@ void loop() {
     unsigned long period = 1000 * 60 * 1; // 1 minutes
     Serial.println(duration);
     if (duration > period) {
+      // Check internet connection
+      connectToWiFi();
       // Send message
       Serial.println("Notify");
       sendGoogleMessage(deviceName, message);
-      delay(5 * 1000);
       // Start counter
       start = millis();
     }
@@ -102,6 +101,8 @@ void configureGPIO() {
 }
 
 void connectToWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  
   Serial.println();
   Serial.print("Connecting to ");
   Serial.print(ssid);
