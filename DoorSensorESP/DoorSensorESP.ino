@@ -34,7 +34,6 @@
 
 const int LEDPin = 2;
 const int buttonPin = 0;
-const int dt = 100;
 
 const char* ssid = "ssid";
 const char* password = "password";
@@ -58,37 +57,34 @@ void setup() {
 }
  
 void loop() { 
-  buttonNew=digitalRead(buttonPin);
+  buttonNew = digitalRead(buttonPin);
   if (buttonOld == 1 && buttonNew == 0) {
     if (LEDState == 0) {
-      digitalWrite(LEDPin, ON);
-      LEDState = 1;
-      Serial.println("ON");
-      // Start counter
-      start = millis();
-    } else {
-      digitalWrite(LEDPin, OFF);
-      LEDState = 0;
-      Serial.println("OFF");
+      turnOn();
+    } else if (LEDState == 1) {
+      turnOff();
     }
+    // Start counter
+    start = millis();
   }
   buttonOld = buttonNew;
-  delay(dt);
 
+  unsigned long duration = millis() - start;
+  Serial.println(duration);
   if (LEDState == 1) {
-    unsigned long duration = millis() - start;
     unsigned long period = 1000 * 60 * 1; // 1 minutes
-    Serial.println(duration);
     if (duration > period) {
-      // Check internet connection
-      connectToWiFi();
-      // Send message
-      Serial.println("Notify");
-      sendGoogleMessage(deviceName, message);
-      // Start counter
-      start = millis();
+      notify();
+    }
+  } else if (LEDState == 0) {
+    unsigned long period = 1000 * 60 * 10; // 10 minutes
+    if (duration > period) {
+      notify();
+      turnOn();
     }
   }
+
+  delay(100);
 }
 
 void configureGPIO() {
@@ -98,6 +94,28 @@ void configureGPIO() {
   digitalWrite(LEDPin, ON);
   LEDState = 1;
   buttonOld = digitalRead(buttonPin);
+}
+
+void turnOn() {
+  digitalWrite(LEDPin, ON);
+  LEDState = 1;
+  Serial.println("ON");
+}
+
+void turnOff() {
+  digitalWrite(LEDPin, OFF);
+  LEDState = 0;
+  Serial.println("OFF");
+}
+
+void notify() {
+  // Check internet connection
+  connectToWiFi();
+  // Send message
+  Serial.println("Notify");
+  sendGoogleMessage(deviceName, message);
+  // Start counter
+  start = millis();
 }
 
 void connectToWiFi() {
