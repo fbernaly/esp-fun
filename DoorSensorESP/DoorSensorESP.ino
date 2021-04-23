@@ -72,7 +72,7 @@ void loop() {
   unsigned long duration = millis() - start;
   Serial.println(duration);
   if (LEDState == 1) {
-    unsigned long period = 1000 * 60 * 1; // 1 minutes
+    unsigned long period = 1000 * 60 * 1; // 1 minute
     if (duration > period) {
       notify();
     }
