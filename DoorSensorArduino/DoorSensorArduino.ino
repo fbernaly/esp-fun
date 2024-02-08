@@ -11,8 +11,8 @@
  * ESP32 receives the cmd and plays a massage in a Google device in your home.
  * 
  * References: 
- *    - https://create.arduino.cc/projecthub/mayooghgirish/arduino-bluetooth-basic-tutorial-d8b737
  *    - https://randomnerdtutorials.com/esp32-bluetooth-classic-arduino-ide/
+ *    - https://techtutorialsx.com/2018/03/09/esp32-arduino-getting-the-bluetooth-device-address/
  *    - https://learn.sparkfun.com/tutorials/using-the-bluesmirf/introduction
  *    - https://cdn.sparkfun.com/assets/1/e/e/5/d/5217b297757b7fd3748b4567.pdf
  * 
