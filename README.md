@@ -26,6 +26,10 @@ ESP32 runs a multiple servers:
 * a TCP server that accept commands to send a message
 to a Google device in your home.
 
+#### Reading LED Light
+
+It uses an ESP32 and a push button to control an LED light and connects to Apple HomeKit using [HomeSpan linrary](https://github.com/HomeSpan/HomeSpan).
+
 ### References:
 
 - [Connecting to a wifi network](https://techtutorialsx.com/2017/04/24/esp32-connecting-to-a-wifi-network/)
