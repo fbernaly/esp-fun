@@ -14,11 +14,11 @@
 #define I2S_PORT I2S_NUM_0
 
 // Define input buffer length
-#define BUFFER_SIZE 512
+#define BUFFER_SIZE 1024
 int32_t buffer[BUFFER_SIZE];
 
 // Define sample rate
-#define SAMPLE_RATE 44100
+#define SAMPLE_RATE 16000
 
 void setup() {
   // Set up Serial Monitor
@@ -72,11 +72,11 @@ void i2s_install() {
     .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
     .sample_rate = SAMPLE_RATE,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
-    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+    .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
     .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
     .intr_alloc_flags = 0,
     .dma_buf_count = 8,
-    .dma_buf_len = BUFFER_SIZE,
+    .dma_buf_len = 128,
     .use_apll = false,
     .tx_desc_auto_clear = false,
     .fixed_mclk = 0
