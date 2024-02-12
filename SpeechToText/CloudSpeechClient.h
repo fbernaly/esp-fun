@@ -6,12 +6,15 @@
 
 class CloudSpeechClient {
   String apiKey;
+  int ledPin = -1;
   WiFiClientSecure client;
 
   void Send(String str);
 
 public:
-  CloudSpeechClient(String apiKey);
+  bool connected = false;
+
+  CloudSpeechClient(String apiKey, int ledPin);
   ~CloudSpeechClient();
   void Transcribe(MicController* mic);
 };

@@ -1,7 +1,7 @@
 #include "CloudSpeechClient.h"
 #include <base64.h>
 
-const char* SERVER = "speech.googleapis.com";
+const char* server = "speech.googleapis.com";
 
 // To get the certificate for your region run:
 // openssl s_client -showcerts -connect speech.googleapis.com:443
@@ -41,47 +41,59 @@ const char* root_ca =
   "1IXNDw9bg1kWRxYtnCQ6yICmJhSFm/Y3m6xv+cXDBlHz4n/FsRC6UfTd\n"
   "-----END CERTIFICATE-----\n";
 
-CloudSpeechClient::CloudSpeechClient(String apiKey) {
+CloudSpeechClient::CloudSpeechClient(String apiKey, int ledPin) {
   this->apiKey = apiKey;
+  this->ledPin = ledPin;
   client.setCACert(root_ca);
-  if (!client.connect(SERVER, 443)) Serial.println("Connection failed!");
+  if (client.connect(server, 443)) {
+    connected = true;
+    Serial.println("Connected to Google server!");
+  } else {
+    connected = false;
+    Serial.println("Connection to Google server failed :(");
+  }
 }
 
 CloudSpeechClient::~CloudSpeechClient() {
   client.stop();
 }
 
-void CloudSpeechClient::Transcribe(MicController* controller) {
-  Serial.println("Transcribing...");
+void CloudSpeechClient::Transcribe(MicController* mic) {
+  Serial.print("Transcribing...");
   String httpBody1 = String("{\"config\":{\"encoding\":\"LINEAR16\",\"sampleRateHertz\":") + SAMPLE_RATE + String(",\"languageCode\":\"en-US\"},\"audio\":{\"content\":\"");
   String httpBody3 = "\"}}\r\n\r\n";
-  int audioLength = (controller->wavSize + sizeof(controller->wavHeader)) * 4 / 3;  // 4/3 is from base64 encoding
+  int audioLength = (WAV_DATA_SIZE + sizeof(mic->wavHeader)) * 4 / 3;  // 4/3 is from base64 encoding
   String contentLength = String(httpBody1.length() + audioLength + httpBody3.length());
 
   String httpHeader1 = String("POST /v1/speech:recognize?key=") + apiKey;
-  String httpHeader2 = String(" HTTP/1.1\r\nHost: ") + SERVER + String("\r\nContent-Type: application/json\r\nContent-Length: ") + contentLength + String("\r\n\r\n");
+  String httpHeader2 = String(" HTTP/1.1\r\nHost: ") + server + String("\r\nContent-Type: application/json\r\nContent-Length: ") + contentLength + String("\r\n\r\n");
 
   Send(httpHeader1);
   Send(httpHeader2);
   Send(httpBody1);
-  String httpBody2 = base64::encode(controller->wavHeader, sizeof(controller->wavHeader));
+  String httpBody2 = base64::encode(mic->wavHeader, sizeof(mic->wavHeader));
   httpBody2.replace("\n", "");  // delete last "\n"
   Send(httpBody2);              // httpBody2
-  for (int j = 0; j < controller->wavSize / controller->dividedWavSize; ++j) {
-    httpBody2 = base64::encode((byte*)controller->wavData[j], controller->dividedWavSize);
+  for (int j = 0; j < WAV_DATA_SIZE / DIVIDED_WAV_DATA_SIZE; ++j) {
+    httpBody2 = base64::encode((byte*)mic->wavData[j], DIVIDED_WAV_DATA_SIZE);
     httpBody2.replace("\n", "");  // delete last "\n"
     Send(httpBody2);              // httpBody2
   }
   Send(httpBody3);
 
-  while (!client.available()) {}
+  int j = 0;
+  while (!client.available()) {
+    Serial.print(".");
+    if (ledPin >= 0) digitalWrite(ledPin, (j++) % 2);
+    delay(50);
+  }
+  digitalWrite(ledPin, LOW);
   String response = "";
   while (client.available()) {
     char temp = client.read();
     response = response + temp;
   }
-  Serial.println("Transcribing Completed.");
-
+  Serial.println("\nTranscribing Completed.");
   Serial.println(response);
 }
 

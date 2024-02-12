@@ -1,16 +1,16 @@
 #include "MicController.h"
 #include "CloudSpeechClient.h"
 
+#define PIN_LED 27
+#define PIN_PUSH_BUTTON 14
+
 #define I2S_MIC_SCK 32
 #define I2S_MIC_WS 25
 #define I2S_MIC_SD 33
 
-#define PIN_LED 27
-#define PIN_PUSH_BUTTON 14
-
 const char* ssid = "<YOUR_SSID>";
 const char* password = "<YOUR_PASSWORD>";
-const String apiKey = "<YOUR_API_KEY>";
+const char* googleApiKey = "<YOUR_API_KEY>";
 
 int lastState = HIGH;  // the previous state from the input pin
 int currentState;      // the current reading from the input pin
@@ -28,7 +28,7 @@ void setup() {
   connectToWifi();
 
   mic = new MicController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD);
-  cloudSpeechClient = new CloudSpeechClient(apiKey);
+  cloudSpeechClient = new CloudSpeechClient(googleApiKey, PIN_LED);
 }
 
 void loop() {
@@ -39,7 +39,7 @@ void loop() {
     digitalWrite(PIN_LED, HIGH);
     mic->Record();
     digitalWrite(PIN_LED, LOW);
-    cloudSpeechClient->Transcribe(mic);
+    if (cloudSpeechClient->connected) cloudSpeechClient->Transcribe(mic);
   }
 
   // save the last state
@@ -50,12 +50,13 @@ void loop() {
 
 void connectToWifi() {
   WiFi.begin(ssid, password);
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);
   Serial.print("Connecting to WiFi");
   int i = 0;
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    delay(100);
     digitalWrite(PIN_LED, (i++) % 2);
+    delay(50);
   }
   digitalWrite(PIN_LED, LOW);
   Serial.print("\nConnected to WiFi network with IP Address: ");
