@@ -2,25 +2,33 @@
 #define _MICCONTROLLER_H
 
 #include <Arduino.h>
+#include <WiFiClientSecure.h>
 #include "driver/i2s.h"
 
-#define SAMPLE_RATE 16000
-#define BUFFER_SIZE 3000  // It should be divisible by 8
-#define DIVIDED_WAV_DATA_SIZE (BUFFER_SIZE / 4)
-#define WAV_DATA_SIZE (160 * DIVIDED_WAV_DATA_SIZE)  // It must be multiple of DIVIDED_WAV_DATA_SIZE.
-#define WAV_HEADER_SIZE 48
+#define STT_BAD_RESPONSE "..."
 
 class MicController {
+  char* wavHeader;
+  String apiKey;
+  WiFiClientSecure client;
+  int ledPin = -1;
+
+  void ValidateBufferSize();
+  void ValidateWavEncodedSize();
+  void OpenSocket();
   void CreateWavHeader();
   void ConfigureI2s(int pinI2sSck, int pinI2sWs, int pinI2sSd);
+  void SendHeader();
+  void SendWavChunk(char* wavChunk);
+  void SendEnd();
+  void Send(String str);
+  bool WaitForClientResponse();
+  String ParseResponse();
 
 public:
-  char** wavData;                           // It's divided. Because large continuous memory area can't be allocated in esp32.
-  byte wavHeader[WAV_HEADER_SIZE] = { 0 };  // The size must be multiple of 3 for Base64 encoding. Additional byte size must be even because wave data is 16bit.
-
-  MicController(int pinI2sSck, int pinI2sWs, int pinI2sSd);
+  MicController(int pinI2sSck, int pinI2sWs, int pinI2sSd, int ledPin, String apiKey);
   ~MicController();
-  void Record();
+  String Transcribe(int duration);
 };
 
 #endif  // _MICCONTROLLER_H

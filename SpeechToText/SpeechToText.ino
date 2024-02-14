@@ -1,5 +1,4 @@
 #include "MicController.h"
-#include "CloudSpeechClient.h"
 
 #define PIN_LED 27
 #define PIN_PUSH_BUTTON 14
@@ -15,31 +14,36 @@ const char* googleApiKey = "<YOUR_API_KEY>";
 int lastState = HIGH;  // the previous state from the input pin
 int currentState;      // the current reading from the input pin
 
-MicController* mic;
-CloudSpeechClient* cloudSpeechClient;
+MicController* controller;
 
 void setup() {
   Serial.begin(115200);
 
+  // set I/O pins
   pinMode(PIN_PUSH_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LED, OUTPUT);
   digitalWrite(PIN_LED, LOW);
 
   connectToWifi();
 
-  mic = new MicController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD);
-  cloudSpeechClient = new CloudSpeechClient(googleApiKey, PIN_LED);
+  // instantiate MicController object, by default it uses port I2S_NUM_0
+  controller = new MicController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD, PIN_LED, googleApiKey);
 }
 
 void loop() {
   // read the state of the switch/button:
   currentState = digitalRead(PIN_PUSH_BUTTON);
 
+  // transcribe when pushbutton is initial pusshed
   if (lastState == HIGH && currentState == LOW) {
-    digitalWrite(PIN_LED, HIGH);
-    mic->Record();
-    digitalWrite(PIN_LED, LOW);
-    if (cloudSpeechClient->connected) cloudSpeechClient->Transcribe(mic);
+    int duration = 5;  // Duration in seconds
+    String stt = controller->Transcribe(duration);
+    Serial.print("speech-to-text: ");
+    Serial.println(stt);
+
+    if (stt == STT_BAD_RESPONSE) {
+      Serial.println("Repeat that again, please...");
+    }
   }
 
   // save the last state

@@ -1,37 +1,49 @@
 # SPEECH TO TEXT
 
-This project demostrates how to setup and connect the INMP441 mic with ESP32 for speech-to-text using [Google's Speech-to-Text API](https://cloud.google.com/speech-to-text) in Arduino IDE. When the push button is pressed the ESP32 starts recording the audio for a couple of seconds. The LED is ON while recording audio. The audio is encoded using 16-bit linear pulse-code modulation (PCM) encoding and sent to Google's server using a web socket with [WiFiClientSecure](https://github.com/espressif/arduino-esp32/tree/master/libraries/WiFiClientSecure). The speech-to-text transciption is printted in the Serial Monitor.
+This project demonstrates how to use the INMP441 microphone with an ESP32 microcontroller for speech-to-text functionality using [Google's Speech-to-Text API](https://cloud.google.com/speech-to-text) within the Arduino IDE. Pressing the pushbutton triggers the ESP32 to record audio for a predetermined duration. An LED visually indicates the recording process. The recorded audio is encoded using 16-bit linear pulse-code modulation (PCM) and securely transmitted to Google's server via a web socket established through [WiFiClientSecure](https://github.com/espressif/arduino-esp32/tree/master/libraries/WiFiClientSecure). The resulting speech-to-text transcription is then displayed in the Serial Monitor.
 
-## Google's Speech-to-Text API
+## Google's Speech-to-Text API Key
 
 Before jumping into coding get an API Key in order to use [Google's Speech-to-Text API](https://cloud.google.com/speech-to-text). To setup up an API Key follow [these steps](https://support.google.com/googleapi/answer/6158862). Replace your API Key in the Sketch:
+
+Before diving into coding, you'll need an API key from [Google's Speech-to-Text](https://cloud.google.com/speech-to-text) service. Here's how to obtain and set it up:
+
+1. Visit the [Google Cloud Platform Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one.
+3. Enable the Google Cloud Speech-to-Text API for your project.
+4. Go to the "APIs & Services" section and click on "Credentials".
+5. Click on "Create credentials" and select "API key".
+6. Copy the generated API key and paste it into the designated field replacing the placeholder.
 
 ```c++
 const char* googleApiKey = "<YOUR_API_KEY>";
 ```
 
-This project consumes the [speech:recognize API](https://cloud.google.com/speech-to-text/docs/reference/rest/v1/speech/recognize) as discribed in [Transcribe short audio files](https://cloud.google.com/speech-to-text/docs/sync-recognize) using the REST API.
+Remember to keep your API key secure and avoid sharing it publicly. To read more about [Setting up API keys](https://support.google.com/googleapi/answer/6158862) go [here](https://support.google.com/googleapi/answer/6158862).
 
-As outline in [Best practices to provide data to the Speech-to-Text API](https://cloud.google.com/speech-to-text/docs/best-practices-provide-speech-data), the audio is sampled at a rate of `16,000 Hz` and it is encoded using `LINEAR16` 16-bit linear pulse-code modulation (PCM) encoding.
+This project leverages the [speech:recognize API](https://cloud.google.com/speech-to-text/docs/reference/rest/v1/speech/recognize) as detailed in [Transcribe short audio files](https://cloud.google.com/speech-to-text/docs/sync-recognize). This enables the ESP32 to process user speech in real-time for interactive voice commands.
 
-To learn for about encoding read [Introduction to audio encoding for Speech-to-Text ](https://cloud.google.com/speech-to-text/docs/encoding) and [WAVE PCM soundfile format](http://soundfile.sapp.org/doc/WaveFormat/).
+Following the recommendations outlined in [Best practices to provide data to the Speech-to-Text API](https://cloud.google.com/speech-to-text/docs/best-practices-provide-speech-data), the audio in this project is sampled at `16,000 Hz` and encoded using 16-bit linear pulse-code modulation (PCM) in the `LINEAR16` format.
 
-## Recording time
+For detailed information on audio encoding for Speech-to-Text, refer to these resources: 
 
-I have tested this project using both ESP32 and ESP32-C3, and I have noticed than the ESP32 can record only up to around 3 seconds, and the ESP32-C3 can record longer times dispite the fact that the ESP32-C3 series has lower SRAM, ROM, and flash as shown in [Chip Series Comparison](https://docs.espressif.com/projects/esp-idf/en/v4.3/esp32c3/hw-reference/chip-series-comparison.html).
+* [Introduction to audio encoding for Speech-to-Text ](https://cloud.google.com/speech-to-text/docs/encoding)
+* [WAVE PCM soundfile format](http://soundfile.sapp.org/doc/WaveFormat/)
 
-To record for about 3 second using [ESP32 Dev Board](../docs/ESP32-DevKitC_GSG_Ver1.4_2017.pdf) replace:
+## Recording duration time
+
+The ESP32 will record audio for a predetermined duration, which is pass when calling the `Transcribe()` method.
+
+Pass the duration 
 
 ```c++
-#define WAV_DATA_SIZE (160 * DIVIDED_WAV_DATA_SIZE)
+MicController* controller = new MicController(...);
+
+int duration = 5;  // Duration in seconds
+String stt = controller->Transcribe(duration);
 ```
 
-To record for about 5 second using [ESP32-C3-Zero Dev Board](https://www.waveshare.com/esp32-c3-zero.htm) replace:
-
-```c++
-#define WAV_DATA_SIZE (190 * DIVIDED_WAV_DATA_SIZE)
-```
-
+I have included this [spreadsheet](./audio_constants_stt.xlsx) to assists with computing the constants.
 
 ## Wiring up
 
@@ -88,8 +100,12 @@ Modify the wiring as needed.
 ## References
 
 - [I2S - API Reference](https://docs.espressif.com/projects/esp-idf/en/v3.3.5/api-reference/peripherals/i2s.html)
-- [Sound with ESP32 – I2S Protocol](https://dronebotworkshop.com/esp32-i2s/)
-- [The Simplest Test Code for an I2S Microphone on the ESP32 I can Imagine](https://github.com/atomic14/esp32-i2s-mic-test/tree/main)
+- [Sound with ESP32 – I2S Protocol by DroneBot Workshop](https://dronebotworkshop.com/esp32-i2s/)
+- [Project: The Simplest Test Code for an I2S Microphone on the ESP32 I can Imagine by atomic14](https://github.com/atomic14/esp32-i2s-mic-test/tree/main)
+- [YouTube video: Speech To Text using ESP32 by techiesms](https://www.youtube.com/watch?v=VoanFTpCTU4)
+- [Project: ESP32-ChatGPT by techiesms](https://github.com/techiesms/ESP32-ChatGPT/tree/main/Speech_To_Text_ESP32)
+- [Project: esp32_CloudSpeech by MhageGH](https://github.com/MhageGH/esp32_CloudSpeech)
+- [Project: ESP32_INMP441_SPEECH_TO_TEXT by ThatProject](https://github.com/0015/ThatProject/tree/master/ESP32_MICROPHONE/ESP32_INMP441_SPEECH_TO_TEXT)
 - [ESP32-C3 Mini Development Board by Waveshare](https://www.waveshare.com/esp32-c3-zero.htm)
 - [ESP32-C3-Zero Wiki by Waveshare](https://www.waveshare.com/wiki/ESP32-C3-Zero)
 - [ESP32 Chip Series Comparison](https://docs.espressif.com/projects/esp-idf/en/v4.3/esp32c3/hw-reference/chip-series-comparison.html)
