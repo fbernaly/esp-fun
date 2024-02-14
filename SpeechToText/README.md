@@ -30,7 +30,7 @@ For detailed information on audio encoding for Speech-to-Text, refer to these re
 * [Introduction to audio encoding for Speech-to-Text ](https://cloud.google.com/speech-to-text/docs/encoding)
 * [WAVE PCM soundfile format](http://soundfile.sapp.org/doc/WaveFormat/)
 
-## Recording duration time
+## Recording duration
 
 The ESP32 will record audio for a predetermined duration, which is pass when calling the `Transcribe()` method.
 
@@ -52,7 +52,7 @@ Modify the wiring as needed.
 ### ESP32
 
 <div align="center">
-<img src="../docs/stt_ESP32_INMP441_connections.png">
+<img height="50%" width="50%" src="./circuit_stt_esp32.png">
 </div>
 
 ```c++
@@ -76,7 +76,7 @@ Modify the wiring as needed.
 ### ESP32-C3-Mini
 
 <div align="center">
-<img src="../docs/stt_ESP32-C3_INMP441_connections.jpg">
+<img height="50%" width="50%" src="./circuit_stt_esp32-c3.png">
 </div>
 
 ```c++
@@ -109,3 +109,4 @@ Modify the wiring as needed.
 - [ESP32-C3 Mini Development Board by Waveshare](https://www.waveshare.com/esp32-c3-zero.htm)
 - [ESP32-C3-Zero Wiki by Waveshare](https://www.waveshare.com/wiki/ESP32-C3-Zero)
 - [ESP32 Chip Series Comparison](https://docs.espressif.com/projects/esp-idf/en/v4.3/esp32c3/hw-reference/chip-series-comparison.html)
+- [Cirkit Designer](https://zenluo.notion.site/Cirkit-Designer-Tutorials-4f5a47656b384709838eb5350596bf95)
