@@ -19,7 +19,7 @@ Modify the wiring as needed.
 |INMP441 | ESP32| Info|
 |---|---|---|
 |VDD|3v3|Power - DO NOT USE 5V!|
-|GND|GND| GND|
+|GND|GND|GND|
 |L/R|GND|Left channel or right channel|
 |WS|25|Left right clock|
 |SCK|32|Serial clock|
