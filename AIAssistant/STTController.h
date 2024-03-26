@@ -7,7 +7,7 @@
 
 #define STT_BAD_RESPONSE "..."
 
-class MicController {
+class STTController {
   char* wavHeader;
   String apiKey;
   WiFiClientSecure client;
@@ -26,8 +26,8 @@ class MicController {
   String ParseResponse();
 
 public:
-  MicController(int pinI2sSck, int pinI2sWs, int pinI2sSd, int ledPin, String apiKey);
-  ~MicController();
+  STTController(int pinI2sSck, int pinI2sWs, int pinI2sSd, int ledPin, String apiKey);
+  ~STTController();
   String Transcribe(int duration);
 };
 

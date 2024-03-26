@@ -45,7 +45,7 @@ Ths project leverages the [Chat Completion API](https://platform.openai.com/docs
 The ESP32 will record audio for a predetermined duration. The duration is passed as an argument when calling the `Transcribe()` method.
 
 ```c++
-MicController* controller = new MicController(...);
+STTController* controller = new STTController(...);
 
 int duration = 5;  // Duration in seconds
 String stt = controller->Transcribe(duration);

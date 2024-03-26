@@ -1,4 +1,4 @@
-#include "MicController.h"
+#include "STTController.h"
 
 #define PIN_LED 27
 #define PIN_PUSH_BUTTON 14
@@ -14,7 +14,7 @@ const char* googleApiKey = "<YOUR_API_KEY>";
 int lastState = HIGH;  // the previous state from the input pin
 int currentState;      // the current reading from the input pin
 
-MicController* controller;
+STTController* controller;
 
 void setup() {
   Serial.begin(115200);
@@ -26,8 +26,8 @@ void setup() {
 
   connectToWifi();
 
-  // instantiate MicController object, by default it uses port I2S_NUM_0
-  controller = new MicController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD, PIN_LED, googleApiKey);
+  // instantiate STTController object, by default it uses port I2S_NUM_0
+  controller = new STTController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD, PIN_LED, googleApiKey);
 }
 
 void loop() {

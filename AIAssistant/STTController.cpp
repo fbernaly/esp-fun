@@ -1,11 +1,11 @@
-#include "MicController.h"
+#include "STTController.h"
 #include <base64.h>
 #include <ArduinoJson.h>
 
 #define SAMPLE_RATE 16000
 #define BUFFER_SIZE 3000                                                          // It should be divisible by 8.
 #define WAV_HEADER_SIZE 48                                                        // The size must be multiple of 3 for Base64 encoding. Additional byte size must be even because wave data is 16bit.
-#define WAV_SAMPLE_SIZE (BUFFER_SIZE / 4)                                         // DO NOT CHANGE. This is the size of the WAV chunck after each i2s_read.
+#define WAV_SAMPLE_SIZE (BUFFER_SIZE / 4)                                         // DO NOT CHANGE. This is the size of the WAV chunk after each i2s_read.
 #define WAV_DATA_SIZE (NUM_SAMPLES * WAV_SAMPLE_SIZE)                             // It must be multiple of WAV_SAMPLE_SIZE.
 #define WAV_SIZE (WAV_DATA_SIZE + WAV_HEADER_SIZE)                                // Size of the resulting WAV file.
 #define WAV_ENCODED_SIZE (WAV_SIZE * 4 / 3)                                       // It must be an integer. 4/3 is from base64 encoding https://developer.mozilla.org/en-US/docs/Glossary/Base64#encoded_size_increase
@@ -53,7 +53,7 @@ const char* CERTIFICATE =
   "1IXNDw9bg1kWRxYtnCQ6yICmJhSFm/Y3m6xv+cXDBlHz4n/FsRC6UfTd\n"
   "-----END CERTIFICATE-----\n";
 
-MicController::MicController(int pinI2sSck, int pinI2sWs, int pinI2sSd, int ledPin, String apiKey) {
+STTController::STTController(int pinI2sSck, int pinI2sWs, int pinI2sSd, int ledPin, String apiKey) {
   this->apiKey = apiKey;
   this->ledPin = ledPin;
 
@@ -62,12 +62,12 @@ MicController::MicController(int pinI2sSck, int pinI2sWs, int pinI2sSd, int ledP
   ConfigureI2s(pinI2sSck, pinI2sWs, pinI2sSd);
 }
 
-MicController::~MicController() {
+STTController::~STTController() {
   client.stop();
   delete wavHeader;
 }
 
-void MicController::ValidateBufferSize() {
+void STTController::ValidateBufferSize() {
   float v = (float)(BUFFER_SIZE) / 4;
   if (v != WAV_SAMPLE_SIZE) {
     Serial.println("WAV_SAMPLE_SIZE should be an integer. Make sure that BUFFER_SIZE is divisible by 8.");
@@ -80,7 +80,7 @@ void MicController::ValidateBufferSize() {
   Serial.println("BUFFER_SIZE is valid!");
 }
 
-void MicController::ValidateWavEncodedSize() {
+void STTController::ValidateWavEncodedSize() {
   float v = (float)WAV_SIZE * 4 / 3;
   if (v != WAV_ENCODED_SIZE) {
     Serial.println("WAV_ENCODED_SIZE should be an integer. Make sure that WAV_SIZE can be multiplied by 4 and divided by 3.");
@@ -88,7 +88,7 @@ void MicController::ValidateWavEncodedSize() {
   }
 }
 
-void MicController::OpenSocket() {
+void STTController::OpenSocket() {
   client.setCACert(CERTIFICATE);
   client.setTimeout(5);
   if (client.connect(STT_SERVER, 443)) {
@@ -98,7 +98,7 @@ void MicController::OpenSocket() {
   }
 }
 
-void MicController::ConfigureI2s(int pinI2sSck, int pinI2sWs, int pinI2sSd) {
+void STTController::ConfigureI2s(int pinI2sSck, int pinI2sWs, int pinI2sSd) {
   i2s_config_t i2s_config = {
     .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
     .sample_rate = SAMPLE_RATE,
@@ -122,7 +122,7 @@ void MicController::ConfigureI2s(int pinI2sSck, int pinI2sWs, int pinI2sSd) {
   i2s_set_pin(I2S_NUM_0, &pin_config);
 }
 
-String MicController::Transcribe(int duration) {
+String STTController::Transcribe(int duration) {
   DURATION = duration;
   ValidateWavEncodedSize();
   CreateWavHeader();
@@ -139,20 +139,20 @@ String MicController::Transcribe(int duration) {
 
   // start recording data from mic
   char* buffer = new char[BUFFER_SIZE];
-  char* wavChunck = new char[WAV_SAMPLE_SIZE];
+  char* wavChunk = new char[WAV_SAMPLE_SIZE];
   for (int j = 0; j < NUM_SAMPLES; ++j) {
     size_t bytesRead = 0;
     i2s_read(I2S_NUM_0, buffer, BUFFER_SIZE, &bytesRead, portMAX_DELAY);
     for (int i = 0; i < WAV_SAMPLE_SIZE / 2; ++i) {
       // saving buffer into wav chuck from one channel only
-      wavChunck[2 * i] = buffer[8 * i + 2];
-      wavChunck[2 * i + 1] = buffer[8 * i + 3];
+      wavChunk[2 * i] = buffer[8 * i + 2];
+      wavChunk[2 * i + 1] = buffer[8 * i + 3];
     }
     // send wav chuck to web socket
-    SendWavChunk(wavChunck);
+    SendWavChunk(wavChunk);
   }
   delete buffer;
-  delete wavChunck;
+  delete wavChunk;
 
   // send end to web socket
   SendEnd();
@@ -171,7 +171,7 @@ String MicController::Transcribe(int duration) {
   return stt;
 }
 
-void MicController::SendHeader() {
+void STTController::SendHeader() {
   String httpBody1 = String("{\"config\":{\"encoding\":\"LINEAR16\",\"sampleRateHertz\":") + SAMPLE_RATE + String(",\"languageCode\":\"en-US\"},\"audio\":{\"content\":\"");
   String httpBody3 = "\"}}\r\n\r\n";
   String contentLength = String(httpBody1.length() + WAV_ENCODED_SIZE + httpBody3.length());
@@ -187,23 +187,23 @@ void MicController::SendHeader() {
   Send(httpBody2);              // httpBody2
 }
 
-void MicController::SendWavChunk(char* wavChunk) {
+void STTController::SendWavChunk(char* wavChunk) {
   String httpBody2 = base64::encode((byte*)wavChunk, WAV_SAMPLE_SIZE);
   httpBody2.replace("\n", "");  // delete last "\n"
   Send(httpBody2);              // httpBody2
 }
 
-void MicController::SendEnd() {
+void STTController::SendEnd() {
   String httpBody3 = "\"}}\r\n\r\n";
   Send(httpBody3);
 }
 
-void MicController::Send(String str) {
+void STTController::Send(String str) {
   client.print(str);
   // Serial.print(str);
 }
 
-bool MicController::WaitForClientResponse() {
+bool STTController::WaitForClientResponse() {
   Serial.print("Waiting for client response...");
   int j = 0;
   while (!client.available()) {
@@ -225,7 +225,7 @@ bool MicController::WaitForClientResponse() {
   return true;
 }
 
-String MicController::ParseResponse() {
+String STTController::ParseResponse() {
   String response = "";
   while (client.available()) {
     char temp = client.read();
@@ -254,7 +254,7 @@ String MicController::ParseResponse() {
   return stt;
 }
 
-void MicController::CreateWavHeader() {
+void STTController::CreateWavHeader() {
   // WAVE PCM soundfile format: http://soundfile.sapp.org/doc/WaveFormat/
   wavHeader = new char[WAV_HEADER_SIZE];
   wavHeader[0] = 'R';

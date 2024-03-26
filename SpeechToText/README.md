@@ -37,7 +37,7 @@ The ESP32 will record audio for a predetermined duration, which is pass when cal
 Pass the duration 
 
 ```c++
-MicController* controller = new MicController(...);
+STTController* controller = new STTController(...);
 
 int duration = 5;  // Duration in seconds
 String stt = controller->Transcribe(duration);

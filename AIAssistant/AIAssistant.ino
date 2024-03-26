@@ -1,4 +1,4 @@
-#include "MicController.h"
+#include "STTController.h"
 #include "ChatGPTClient.h"
 #include "Audio.h"
 
@@ -21,7 +21,7 @@ const char* chatGPTApiKey = "<YOUR_API_KEY>";
 int lastState = HIGH;  // the previous state from the input pin
 int currentState;      // the current reading from the input pin
 
-MicController* controller;
+STTController* controller;
 ChatGPTClient* chatGPTClient;
 Audio* audio;
 
@@ -35,14 +35,14 @@ void setup() {
 
   connectToWifi();
 
-  // instantiate MicController object, by default it uses port I2S_NUM_0
-  controller = new MicController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD, PIN_LED, googleApiKey);
+  // instantiate STTController object, by default it uses port I2S_NUM_0
+  controller = new STTController(I2S_MIC_SCK, I2S_MIC_WS, I2S_MIC_SD, PIN_LED, googleApiKey);
 
   // instantiate ChatGPTClient object
   chatGPTClient = new ChatGPTClient(chatGPTApiKey);
 
   // instantiate Audio object
-  // since MicController uses port I2S_NUM_0, set port I2S_NUM_1 for Audio
+  // since STTController uses port I2S_NUM_0, set port I2S_NUM_1 for Audio
   audio = new Audio(false, 3, I2S_NUM_1);
   audio->setPinout(I2S_BCLK, I2S_LRC, I2S_DIN);
   audio->setVolume(60);
