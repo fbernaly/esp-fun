@@ -3,6 +3,11 @@
 struct HumanPresenceRadarSensor : Service::OccupancySensor {
   SpanCharacteristic *presence;
   ld2410 radar;
+  int presenceDetected = 0;
+  int stationaryTargetDistance = 0;
+  int stationaryTargetEnergy = 0;
+  int movingTargetDistance = 0;
+  int movingTargetEnergy = 0;
 
   HumanPresenceRadarSensor(int gpioRxPin, int gpioTxPin)
     : Service::OccupancySensor() {
@@ -10,27 +15,26 @@ struct HumanPresenceRadarSensor : Service::OccupancySensor {
 
     Serial1.begin(256000, SERIAL_8N1, gpioRxPin, gpioTxPin);  //UART for monitoring the radar
     delay(500);
-    Serial.print(F("\nConnect LD2410 radar TX to GPIO:"));
+    Serial.print("\nConnect LD2410 radar TX to GPIO:");
     Serial.println(gpioRxPin);
-    Serial.print(F("Connect LD2410 radar RX to GPIO:"));
+    Serial.print("Connect LD2410 radar RX to GPIO:");
     Serial.println(gpioTxPin);
-    Serial.print(F("LD2410 radar sensor initialising: "));
+    Serial.print("LD2410 radar sensor initialising: ");
     if (radar.begin(Serial1)) {
-      Serial.println(F("OK"));
-      Serial.print(F("LD2410 firmware version: "));
+      Serial.println("OK");
+      Serial.print("LD2410 firmware version: ");
       Serial.print(radar.firmware_major_version);
       Serial.print('.');
       Serial.print(radar.firmware_minor_version);
       Serial.print('.');
       Serial.println(radar.firmware_bugfix_version, HEX);
     } else {
-      Serial.println(F("not connected"));
+      Serial.println("not connected");
     }
 
     presence = new Characteristic::OccupancyDetected(0);
 
-    LOG1("Configuring Sensor");
-    LOG1("\n");
+    WEBLOG("Sensor is configured!");
   }
 
   void loop() {
@@ -38,25 +42,47 @@ struct HumanPresenceRadarSensor : Service::OccupancySensor {
       radar.read();
       if (radar.isConnected()) {
         if (radar.presenceDetected()) {
+          if (presenceDetected == 0) {
+            presenceDetected = 1;
+            WEBLOG("Presence detected");
+          }
           if (radar.stationaryTargetDetected()) {
-            Serial.print(F("Stationary target: "));
-            Serial.print(radar.stationaryTargetDistance());
-            Serial.print(F("cm energy:"));
-            Serial.print(radar.stationaryTargetEnergy());
-            Serial.print(' ');
+            int _stationaryTargetDistance = radar.stationaryTargetDistance();
+            int _stationaryTargetEnergy = radar.stationaryTargetEnergy();
+            if (stationaryTargetDistance != _stationaryTargetDistance || stationaryTargetEnergy != _stationaryTargetEnergy) {
+              stationaryTargetDistance = _stationaryTargetDistance;
+              stationaryTargetEnergy = _stationaryTargetEnergy;
+              String message = String("Stationary target: ") + stationaryTargetDistance + String("cm, energy: ") + stationaryTargetEnergy;
+              WEBLOG("%s", message.c_str());
+            }
+          } else {
+            stationaryTargetDistance = 0;
+            stationaryTargetEnergy = 0;
           }
           if (radar.movingTargetDetected()) {
-            Serial.print(F("Moving target: "));
-            Serial.print(radar.movingTargetDistance());
-            Serial.print(F("cm energy:"));
-            Serial.print(radar.movingTargetEnergy());
+            int _movingTargetDistance = radar.movingTargetDistance();
+            int _movingTargetEnergy = radar.movingTargetEnergy();
+            if (movingTargetDistance != _movingTargetDistance || movingTargetEnergy != _movingTargetEnergy) {
+              movingTargetDistance = _movingTargetDistance;
+              movingTargetEnergy = _movingTargetEnergy;
+              String message = String("Moving target: ") + movingTargetDistance + String("cm, energy: ") + movingTargetEnergy;
+              WEBLOG("%s", message.c_str());
+            }
+          } else {
+            movingTargetDistance = 0;
+            movingTargetEnergy = 0;
           }
-          Serial.println();
-          presence->setVal(1);
         } else {
-          Serial.println(F("No target"));
-          presence->setVal(0);
+          if (presenceDetected) {
+            WEBLOG("No presence detected");
+            presenceDetected = 0;
+            stationaryTargetDistance = 0;
+            stationaryTargetEnergy = 0;
+            movingTargetDistance = 0;
+            movingTargetEnergy = 0;
+          }
         }
+        presence->setVal(presenceDetected);
       }
     }
   }
