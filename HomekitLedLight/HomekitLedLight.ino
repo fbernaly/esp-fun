@@ -19,16 +19,16 @@ void setup() {
 
   homeSpan.setLogLevel(1);  // Sets Log Level to 1, which causes LOG1() messages to be output
   homeSpan.setPairingCode("11122333");
-  homeSpan.begin(Category::Lighting, "esp32-lighting");
+  homeSpan.begin(Category::Lighting, "esp32-light");
 
   new SpanAccessory();
   new Service::AccessoryInformation();
   new Characteristic::Identify();
-  new Characteristic::Name("Human Presence Sensor");  // Name of the Accessory (arbitrary text string, and can be the same for every Accessory)
-  new Characteristic::Manufacturer("FBY");            // Manufacturer of the Accessory (arbitrary text string, and can be the same for every Accessory)
-  new Characteristic::SerialNumber("test");           // Serial Number of the Accessory (arbitrary text string, and can be the same for every Accessory)
-  new Characteristic::Model("LED Light");       // Model of the Accessory (arbitrary text string, and can be the same for every Accessory)
-  new Characteristic::FirmwareRevision("1");          // Firmware of the Accessory (arbitrary text string, and can be the same for every Accessory)
+  new Characteristic::Name("LED Light");      // Name of the Accessory (arbitrary text string, and can be the same for every Accessory)
+  new Characteristic::Manufacturer("FBY");    // Manufacturer of the Accessory (arbitrary text string, and can be the same for every Accessory)
+  new Characteristic::SerialNumber("test");   // Serial Number of the Accessory (arbitrary text string, and can be the same for every Accessory)
+  new Characteristic::Model("LED Light");     // Model of the Accessory (arbitrary text string, and can be the same for every Accessory)
+  new Characteristic::FirmwareRevision("1");  // Firmware of the Accessory (arbitrary text string, and can be the same for every Accessory)
   new LedController(LED_PIN, PUSH_BUTTON_PIN);
 }
 

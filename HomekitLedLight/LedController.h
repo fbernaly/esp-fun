@@ -19,8 +19,7 @@ struct LedController : Service::LightBulb {  // create a derived class from the 
   // Over-ride the default update() method with instructions that actually turn on/off the LED.  Note update() returns type boolean
 
   boolean update() {
-    LOG1("Got update from HomeKit");
-    LOG1("\n");
+    LOG1("Got update from HomeKit\n");
     digitalWrite(ledPin, power->getNewVal());  // use a standard Arduino function to turn on/off ledPin based on the return of a call to power->getNewVal()
     return (true);                             // return true to indicate the update was successful (otherwise create code to return false if some reason you could not turn on the LED)
   }
@@ -29,8 +28,7 @@ struct LedController : Service::LightBulb {  // create a derived class from the 
     if (power->getVal() && power->timeVal() > (60 * 60000)) {  // check that power is true, and that time since last modification is greater than 60 mins
       power->setVal(false);
       digitalWrite(ledPin, LOW);  // set power to false
-      LOG1("Turn off after timeout");
-      LOG1("\n");
+      LOG1("Turn off after timeout\n");
     }
   }
 
