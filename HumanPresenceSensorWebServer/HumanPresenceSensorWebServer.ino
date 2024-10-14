@@ -6,6 +6,7 @@
 
 #define GPIO_RX_PIN 4  // Connect this GPIO pin to TX in the LD2410 module
 #define GPIO_TX_PIN 3  // Connect this GPIO pin to RX in the LD2410 module
+#define BUZZER_PIN 0
 
 // Replace with your network credentials
 const char *ssid = "ssid";
@@ -17,6 +18,12 @@ int stationaryTargetDistance = 0;
 int stationaryTargetEnergy = 0;
 int movingTargetDistance = 0;
 int movingTargetEnergy = 0;
+
+unsigned long startTime = 0;
+unsigned long endBuzzingTime = 5 * 60000;
+unsigned long startBuzzingTime = endBuzzingTime - 3000;
+int buzzing = LOW;
+int presenceDetectedDelayed = 0;
 
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
@@ -77,15 +84,22 @@ const char index_html[] PROGMEM = R"rawliteral(
     <div class="cards">
       <div class="card">
         <p>PRESENCE DETECTED</p>
-        <p><span class="reading"><span id="pd">--</p>
+        <p>
+          <span class="reading" id="pd">--</span>
+          [<span class="reading" id="pdd">--</span>]
+        </p>
       </div>
       <div class="card">
         <p>STATIONARY</p>
-        <p><span class="reading"><span id="std">--</p>
+        <p>
+          <span class="reading" id="std">--</span>
+        </p>
       </div>
       <div class="card">
         <p>MOVING</p>
-        <p><span class="reading"><span id="movd">--</p>
+        <p>
+          <span class="reading" id="movd">--</span>
+        </p>
       </div>
     </div>
   </div>
@@ -120,7 +134,7 @@ var chartDistance = new Highcharts.Chart({
       text: 'Distance (cm)'
     },
     min: 0,
-    max: 500
+    max: 600
   },
   credits: { 
     enabled: false 
@@ -142,7 +156,7 @@ var chartEnergy = new Highcharts.Chart({
     }
   ],
   title: { 
-    text: 'Energy to target'
+    text: 'Target Energy'
   },
   xAxis: {
     visible: false,
@@ -197,8 +211,8 @@ setInterval(function ( ) {
         chartEnergy.series[1].addPoint([x, yme], true, false, true);
       }
 
-      var presenceDetected = Number(jsonValue["presenceDetected"]) == 1 ? 'YES' : 'NO';
       document.getElementById("pd").innerHTML = Number(jsonValue["presenceDetected"]) == 1 ? 'YES' : 'NO';
+      document.getElementById("pdd").innerHTML = Number(jsonValue["presenceDetectedDelayed"]) == 1 ? 'YES' : 'NO';
       document.getElementById("std").innerHTML = ysd == 0 && yse == 0 ? 'NO' : 'YES';
       document.getElementById("movd").innerHTML = ymd == 0 && yme == 0 ? 'NO' : 'YES';
     }
@@ -243,6 +257,7 @@ String getJsonReadingData() {
   // Json Variable to Hold Sensor Readings
   JSONVar readings;
   readings["presenceDetected"] = String(presenceDetected);
+  readings["presenceDetectedDelayed"] = String(presenceDetectedDelayed);
   readings["stationaryTargetDistance"] = String(stationaryTargetDistance);
   readings["stationaryTargetEnergy"] = String(stationaryTargetEnergy);
   readings["movingTargetDistance"] = String(movingTargetDistance);
@@ -253,48 +268,102 @@ String getJsonReadingData() {
 
 void getSensorReading() {
   radar.read();
-  if (radar.isConnected()) {
-    if (radar.presenceDetected()) {
-      if (presenceDetected == 0) {
-        presenceDetected = 1;
-        Serial.println("Presence detected");
-      }
-      if (radar.stationaryTargetDetected()) {
-        int _stationaryTargetDistance = radar.stationaryTargetDistance();
-        int _stationaryTargetEnergy = radar.stationaryTargetEnergy();
-        if (stationaryTargetDistance != _stationaryTargetDistance || stationaryTargetEnergy != _stationaryTargetEnergy) {
-          stationaryTargetDistance = _stationaryTargetDistance;
-          stationaryTargetEnergy = _stationaryTargetEnergy;
-          String message = String("Stationary target: ") + stationaryTargetDistance + String("cm, energy: ") + stationaryTargetEnergy;
-          Serial.println(message);
-        }
-      } else {
-        stationaryTargetDistance = 0;
-        stationaryTargetEnergy = 0;
-      }
-      if (radar.movingTargetDetected()) {
-        int _movingTargetDistance = radar.movingTargetDistance();
-        int _movingTargetEnergy = radar.movingTargetEnergy();
-        if (movingTargetDistance != _movingTargetDistance || movingTargetEnergy != _movingTargetEnergy) {
-          movingTargetDistance = _movingTargetDistance;
-          movingTargetEnergy = _movingTargetEnergy;
-          String message = String("Moving target: ") + movingTargetDistance + String("cm, energy: ") + movingTargetEnergy;
-          Serial.println(message);
-        }
-      } else {
-        movingTargetDistance = 0;
-        movingTargetEnergy = 0;
-      }
+  if (!radar.isConnected()) return;
+
+  // temp variables
+  int _presenceDetected = 0;
+  int _stationaryTargetDistance = 0;
+  int _stationaryTargetEnergy = 0;
+  int _movingTargetDistance = 0;
+  int _movingTargetEnergy = 0;
+
+  // read values from sensor
+  if (radar.presenceDetected()) {
+    _presenceDetected = 1;
+    if (radar.stationaryTargetDetected()) {
+      _stationaryTargetDistance = radar.stationaryTargetDistance();
+      _stationaryTargetEnergy = radar.stationaryTargetEnergy();
+    }
+    if (radar.movingTargetDetected()) {
+      _movingTargetDistance = radar.movingTargetDistance();
+      _movingTargetEnergy = radar.movingTargetEnergy();
+    }
+  }
+
+  // compute _presenceDetected from energy
+  _presenceDetected = _stationaryTargetEnergy > 20 || _movingTargetEnergy > 20;
+
+  // detect presence changes and update global presenceDetected var
+  if (presenceDetected != _presenceDetected) {
+    presenceDetected = _presenceDetected;
+    if (presenceDetected) {
+      Serial.println("Presence detected");
     } else {
-      if (presenceDetected) {
-        Serial.println("No presence detected");
-        presenceDetected = 0;
-        stationaryTargetDistance = 0;
-        stationaryTargetEnergy = 0;
-        movingTargetDistance = 0;
-        movingTargetEnergy = 0;
+      Serial.println("No presence detected");
+      startTime = millis();
+    }
+  }
+
+  // compute delayed presence changes
+  int _buzzing = LOW;
+  if (presenceDetected) {
+    presenceDetectedDelayed = 1;
+  } else {
+    if (presenceDetectedDelayed == 1) {
+      unsigned long currentTime = millis();
+      unsigned long elapsedTime = currentTime - startTime;
+      if (elapsedTime > endBuzzingTime) {
+        presenceDetectedDelayed = 0;
+        Serial.println("No presence detected [delayed]");
+      }
+      if (elapsedTime > startBuzzingTime && elapsedTime < endBuzzingTime) {
+        buzzing = int(elapsedTime / 200) % 2;
       }
     }
+  }
+  buzzing = _buzzing;
+
+  // update global stationary vars
+  if (stationaryTargetDistance != _stationaryTargetDistance || stationaryTargetEnergy != _stationaryTargetEnergy) {
+    stationaryTargetDistance = _stationaryTargetDistance;
+    stationaryTargetEnergy = _stationaryTargetEnergy;
+    String message = String("Stationary target: ") + stationaryTargetDistance + String("cm, energy: ") + stationaryTargetEnergy;
+    Serial.println(message);
+  }
+
+  // update global moving vars
+  if (movingTargetDistance != _movingTargetDistance || movingTargetEnergy != _movingTargetEnergy) {
+    movingTargetDistance = _movingTargetDistance;
+    movingTargetEnergy = _movingTargetEnergy;
+    String message = String("Moving target: ") + movingTargetDistance + String("cm, energy: ") + movingTargetEnergy;
+    Serial.println(message);
+  }
+}
+
+void configureSensor() {
+  Serial1.begin(256000, SERIAL_8N1, GPIO_RX_PIN, GPIO_TX_PIN);
+  if (radar.begin(Serial1)) {
+    Serial.println("OK");
+    Serial.print("LD2410 firmware version: ");
+    Serial.print(radar.firmware_major_version);
+    Serial.print('.');
+    Serial.print(radar.firmware_minor_version);
+    Serial.print('.');
+    Serial.println(radar.firmware_bugfix_version, HEX);
+
+    radar.requestFactoryReset();
+
+    radar.setGateSensitivityThreshold(0, 100, 100);
+    radar.setGateSensitivityThreshold(1, 90, 90);
+    radar.setGateSensitivityThreshold(2, 40, 40);
+    radar.setGateSensitivityThreshold(3, 40, 40);
+    radar.setGateSensitivityThreshold(4, 40, 40);
+    radar.setGateSensitivityThreshold(5, 40, 40);
+    radar.setGateSensitivityThreshold(6, 40, 40);
+    radar.setGateSensitivityThreshold(7, 100, 100);
+    radar.setGateSensitivityThreshold(8, 100, 100);
+  } else {
+    Serial.println("LD2410 not connected");
   }
 }
 
@@ -306,18 +375,7 @@ void setup() {
   connectToWifi();
 
   // Configure LD2410
-  Serial1.begin(256000, SERIAL_8N1, GPIO_RX_PIN, GPIO_TX_PIN);
-  if (radar.begin(Serial1)) {
-    Serial.println("OK");
-    Serial.print("LD2410 firmware version: ");
-    Serial.print(radar.firmware_major_version);
-    Serial.print('.');
-    Serial.print(radar.firmware_minor_version);
-    Serial.print('.');
-    Serial.println(radar.firmware_bugfix_version, HEX);
-  } else {
-    Serial.println("LD2410 not connected");
-  }
+  configureSensor();
 
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -333,8 +391,12 @@ void setup() {
   server.begin();
 
   Serial.println("Server started!");
+
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
 }
 
 void loop() {
   getSensorReading();
+  digitalWrite(BUZZER_PIN, buzzing);
 }

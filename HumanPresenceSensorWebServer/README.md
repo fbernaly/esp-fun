@@ -9,6 +9,10 @@ The LD2410 Human Presence Radar Sensor Module has three available versions, alth
 |No Bluetooth|Has Bluetooth|Has Bluetooth|
 |1.27mm pins|1.27mm pins|2.54mm pins (standard)|
 
+<div align="center">
+<img height="50%" width="50%" src="./LD2410_gate_values.png">
+</div>
+
 ## Wiring up
 
 Modify the wiring as needed.
@@ -24,7 +28,6 @@ Using an ESP32-VROOM-32D
 <div align="center">
 <img height="50%" width="50%" src="./circuit_human_presence_sensor_vroom_32d.png">
 </div>
-
 
 ```c++
 // for ESP32-C3-Zero
